@@ -10,6 +10,12 @@ export default function Home() {
           <span className="text-xl font-bold text-blue-600 tracking-tight">AX-Diagnosis</span>
           <div className="flex items-center gap-3">
             <a
+              href="/diagnosis/result"
+              className="text-gray-500 hover:text-gray-800 text-sm font-semibold transition-colors"
+            >
+              診断結果を見る
+            </a>
+            <a
               href="/diagnosis"
               className="text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors"
             >
@@ -36,7 +42,7 @@ export default function Home() {
         </h1>
         <p className="text-lg md:text-xl text-gray-500 max-w-2xl mb-10 leading-relaxed">
           あなたの組織は、AIトランスフォーメーションに対応できていますか？<br />
-          組織・個人の4軸診断で、現状の課題と次のアクションが明確になります。
+          組織・個人の4領域診断で、現状の課題と次のアクションが明確になります。
         </p>
         <div className="flex flex-col sm:flex-row gap-4 items-center">
           <a
@@ -57,10 +63,10 @@ export default function Home() {
         {/* スコアイメージ */}
         <div className="mt-20 bg-white rounded-2xl shadow-xl border border-gray-100 px-10 py-8 inline-flex gap-12 items-center">
           {[
-            { label: "組織×Hard", score: 72 },
-            { label: "組織×Soft", score: 58 },
-            { label: "個人×Hard", score: 84 },
-            { label: "個人×Soft", score: 45 },
+            { label: "組織Hard領域", score: 72 },
+            { label: "組織Soft領域", score: 58 },
+            { label: "個人Hard領域", score: 84 },
+            { label: "個人Soft領域", score: 45 },
           ].map(({ label, score }) => (
             <div key={label} className="flex flex-col items-center gap-2">
               <div className="relative w-16 h-16">
@@ -120,7 +126,7 @@ export default function Home() {
               AX-Diagnosisが<span className="text-orange-500">解決します</span>
             </h2>
             <p className="text-gray-500 text-lg max-w-xl mx-auto">
-              独自の4軸診断フレームワークで、組織のAX準備状況を可視化し、具体的なアクションへつなげます。
+              独自の4領域診断フレームワークで、組織のAX準備状況を可視化し、具体的なアクションへつなげます。
             </p>
           </div>
 
@@ -128,29 +134,29 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-6 mb-14">
             {[
               {
-                axis: "組織 × Hard",
+                axis: "組織Hard領域",
                 sub: "戦略・基盤",
                 color: "blue",
                 desc: "全社AI戦略・KGI、ガバナンス・倫理規定、データ基盤・IT環境、業務プロセスの標準化度を診断します。",
                 items: ["AI活用戦略・KGIの明確さ", "ガイドライン・倫理規定の整備", "RAG・データ基盤の構築度", "業務SOPへの組み込み"],
               },
               {
-                axis: "組織 × Soft",
+                axis: "組織Soft領域",
                 sub: "文化・風土",
                 color: "violet",
                 desc: "挑戦文化・心理的安全性、意思決定の機敏性、AI人材の評価制度、ナレッジ共有の仕組みを診断します。",
                 items: ["失敗を許容する挑戦文化", "現場への権限移譲・機敏性", "AI活用を評価する人事制度", "成功事例の組織的共有"],
               },
               {
-                axis: "個人 × Hard",
+                axis: "個人Hard領域",
                 sub: "テクニカルスキル",
                 color: "orange",
                 desc: "AI基礎知識、セキュリティ・リスク理解、プロンプトエンジニアリング、RAG・ワークフロー活用力を診断します。",
                 items: ["LLM・マルチモーダルの理解", "情報漏洩・著作権リスク管理", "Few-shot・CoTなど精度向上手法", "RAG・API・ワークフロー設計"],
               },
               {
-                axis: "個人 × Soft",
-                sub: "ポータブルスキル・スタンス",
+                axis: "個人Soft領域",
+                sub: "スタンス・特性",
                 color: "green",
                 desc: "業務課題の設定力、成果逆算の目的志向、AIへの批判的思考、新技術への開放性を診断します。",
                 items: ["AIで解くべき問いの設定力", "業務成果からの逆算思考", "出力の批判的検証習慣", "新ツールへの探索・学習姿勢"],
@@ -197,7 +203,7 @@ export default function Home() {
               {
                 icon: <BarChart3 size={32} className="text-blue-600" />,
                 title: "現状を数値で可視化",
-                desc: "組織×Hard・Soft、個人×Hard・Softの4軸でスコアリング。自社のAX成熟度が一目でわかります。",
+                desc: "組織Hard・Soft、個人Hard・Softの4領域でスコアリング。自社のAX成熟度が一目でわかります。",
               },
               {
                 icon: <Users size={32} className="text-blue-600" />,

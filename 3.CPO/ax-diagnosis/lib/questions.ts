@@ -16,17 +16,17 @@ export interface Question {
 }
 
 export const AXIS_LABELS: Record<Axis, string> = {
-  org_hard: "組織×Hard",
-  org_soft: "組織×Soft",
-  ind_hard: "個人×Hard",
-  ind_soft: "個人×Soft",
+  org_hard: "組織Hard領域",
+  org_soft: "組織Soft領域",
+  ind_hard: "個人Hard領域",
+  ind_soft: "個人Soft領域",
 };
 
 export const AXIS_DESC: Record<Axis, string> = {
   org_hard: "戦略・基盤",
   org_soft: "文化・風土",
   ind_hard: "テクニカルスキル",
-  ind_soft: "ポータブルスキル・スタンス",
+  ind_soft: "スタンス・特性",
 };
 
 // ─── Level 1: Hook（4問） ─────────────────────────────────────────────────────

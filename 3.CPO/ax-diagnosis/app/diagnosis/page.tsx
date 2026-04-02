@@ -1,64 +1,28 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronRight, ChevronLeft, CheckCircle, RotateCcw, BarChart3 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronRight, ChevronLeft, CheckCircle } from "lucide-react";
 import {
   getQuestionsByLevel,
   computeAxisScores,
-  scoreQuestion,
   AXIS_LABELS,
-  AXIS_DESC,
   type Question,
   type Axis,
 } from "@/lib/questions";
 
 type Level = 1 | 2 | 3;
-type Step = "intro" | "question" | "result";
+type Step = "intro" | "question";
 
 const LEVEL_META: Record<Level, { label: string; questions: string; time: string; desc: string }> = {
-  1: { label: "Hook", questions: "4問", time: "約2分", desc: "4軸それぞれの代表質問で現状を素早く把握します。" },
-  2: { label: "Checkup", questions: "16問", time: "約8分", desc: "各軸4問ずつ、シナリオ選択と知識問題で詳細を診断します。" },
+  1: { label: "Hook", questions: "4問", time: "約2分", desc: "4領域それぞれの代表質問で現状を素早く把握します。" },
+  2: { label: "Checkup", questions: "16問", time: "約8分", desc: "各領域4問ずつ、シナリオ選択と知識問題で詳細を診断します。" },
   3: { label: "Biopsy", questions: "64問", time: "約20分", desc: "全64問の詳細診断で組織・個人の強みと弱点を完全把握します。" },
 };
 
-const AXIS_ORDER: Axis[] = ["org_hard", "org_soft", "ind_hard", "ind_soft"];
-
-const AXIS_COLOR: Record<Axis, string> = {
-  org_hard: "#2563eb",
-  org_soft: "#7c3aed",
-  ind_hard: "#ea580c",
-  ind_soft: "#16a34a",
-};
-
-const SCORE_LEVELS = [
-  { min: 80, label: "先進", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-  { min: 60, label: "発展", color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200" },
-  { min: 40, label: "整備中", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" },
-  { min: 0, label: "初期", color: "text-red-600", bg: "bg-red-50", border: "border-red-200" },
-];
-
-function getScoreLevel(score: number) {
-  return SCORE_LEVELS.find((l) => score >= l.min) ?? SCORE_LEVELS[3];
-}
-
-function ScoreRing({ score, color, size = 80 }: { score: number; color: string; size?: number }) {
-  const r = 14;
-  const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  return (
-    <svg width={size} height={size} viewBox="0 0 36 36" className="-rotate-90">
-      <circle cx="18" cy="18" r={r} fill="none" stroke="#e5e7eb" strokeWidth="3" />
-      <circle
-        cx="18" cy="18" r={r} fill="none"
-        stroke={color} strokeWidth="3"
-        strokeDasharray={`${dash} ${circ}`}
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 export default function DiagnosisPage() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("intro");
   const [level, setLevel] = useState<Level>(2);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -99,8 +63,14 @@ export default function DiagnosisPage() {
 
   function advance(ans: Record<string, number | number[]>) {
     if (currentIndex + 1 >= totalQ) {
-      setAnswers(ans);
-      setStep("result");
+      const scores = computeAxisScores(questions, ans);
+      const vals = Object.values(scores);
+      const total = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+      localStorage.setItem(
+        "ax_diagnosis_result",
+        JSON.stringify({ totalScore: total, axisScores: scores, level, completedAt: new Date().toISOString() })
+      );
+      router.push("/diagnosis/result");
     } else {
       setCurrentIndex((i) => i + 1);
     }
@@ -122,16 +92,6 @@ export default function DiagnosisPage() {
     setStep("intro");
   }
 
-  const axisScores = useMemo(
-    () => computeAxisScores(questions, answers),
-    [questions, answers]
-  );
-
-  const totalScore = useMemo(() => {
-    const vals = Object.values(axisScores);
-    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
-  }, [axisScores]);
-
   // ── Intro screen ──────────────────────────────────────────────────────────
   if (step === "intro") {
     return (
@@ -143,10 +103,10 @@ export default function DiagnosisPage() {
           AX診断スタート
         </span>
         <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 text-center mb-4">
-          診断レベルを選択してください
+          診断の深度を選択してください
         </h1>
         <p className="text-gray-500 text-center mb-10 max-w-lg">
-          組織のAXトランスフォーメーション準備状況を、4軸（組織×Hard・Soft、個人×Hard・Soft）でスコアリングします。
+          組織のAXトランスフォーメーション準備状況を、4領域（組織×Hard・Soft、個人×Hard・Soft）でスコアリングします。
         </p>
 
         <div className="grid md:grid-cols-3 gap-6 w-full max-w-3xl mb-10">
@@ -165,7 +125,7 @@ export default function DiagnosisPage() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <span className={`text-xs font-bold uppercase tracking-widest ${selected ? "text-blue-600" : "text-gray-400"}`}>
-                    Level {lv}
+                    Depth {lv}
                   </span>
                   {selected && <CheckCircle size={18} className="text-blue-600" />}
                 </div>
@@ -184,113 +144,6 @@ export default function DiagnosisPage() {
           診断を始める →
         </button>
         <p className="mt-4 text-sm text-gray-400">所要時間: {LEVEL_META[level].time}</p>
-      </div>
-    );
-  }
-
-  // ── Result screen ─────────────────────────────────────────────────────────
-  if (step === "result") {
-    const totalLevel = getScoreLevel(totalScore);
-
-    const axisAdvice: Record<Axis, string> = {
-      org_hard: axisScores.org_hard >= 60
-        ? "戦略・基盤の整備が進んでいます。さらなる高度化（API連携・継続改善ループ）を目指しましょう。"
-        : "全社AI戦略のKGI設定・ガバナンス整備・データ基盤構築を優先的に進めることを推奨します。",
-      org_soft: axisScores.org_soft >= 60
-        ? "学習する組織文化が醸成されています。ナレッジ共有の仕組みと評価制度のさらなる連動を検討しましょう。"
-        : "挑戦文化の醸成と、失敗を許容する心理的安全性の向上が急務です。まずは経営層の率先垂範から始めましょう。",
-      ind_hard: axisScores.ind_hard >= 60
-        ? "AI技術の理解度が高い状態です。RAG・ワークフロー設計など応用・実装スキルの深化を図りましょう。"
-        : "AIの基礎知識・セキュリティリスク・プロンプト技術の習得が必要です。体系的なリスキリングプログラムを設計しましょう。",
-      ind_soft: axisScores.ind_soft >= 60
-        ? "AI活用の姿勢・思考習慣が身についています。周囲への横展開・メンタリングで組織全体を牽引しましょう。"
-        : "業務課題の設定力・批判的思考・開放的なスタンスを育てる研修や1on1フォローを実施しましょう。",
-    };
-
-    return (
-      <div className="min-h-screen bg-gray-50 px-6 py-16">
-        <div className="max-w-3xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-10">
-            <span className={`inline-block text-xs font-bold px-4 py-1.5 rounded-full mb-4 tracking-widest uppercase ${totalLevel.bg} ${totalLevel.color}`}>
-              診断結果
-            </span>
-            <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
-              総合スコア&nbsp;
-              <span style={{ color: AXIS_COLOR.org_hard }}>{totalScore}</span>
-              <span className="text-2xl text-gray-400">/100</span>
-            </h1>
-            <p className={`inline-block font-bold text-lg px-4 py-1 rounded-full ${totalLevel.bg} ${totalLevel.color} ${totalLevel.border} border`}>
-              成熟度レベル：{totalLevel.label}
-            </p>
-          </div>
-
-          {/* Axis scores */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <BarChart3 size={20} className="text-blue-600" /> 4軸スコア
-            </h2>
-            <div className="grid grid-cols-2 gap-6">
-              {AXIS_ORDER.map((axis) => {
-                const score = axisScores[axis];
-                const lv = getScoreLevel(score);
-                const color = AXIS_COLOR[axis];
-                return (
-                  <div key={axis} className="flex items-center gap-4">
-                    <div className="relative shrink-0">
-                      <ScoreRing score={score} color={color} size={72} />
-                      <span className="absolute inset-0 flex items-center justify-center text-base font-bold" style={{ color }}>
-                        {score}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900 text-sm">{AXIS_LABELS[axis]}</p>
-                      <p className="text-xs text-gray-400">{AXIS_DESC[axis]}</p>
-                      <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${lv.bg} ${lv.color}`}>
-                        {lv.label}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Advice per axis */}
-          <div className="space-y-3 mb-8">
-            {AXIS_ORDER.map((axis) => (
-              <div key={axis} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                <p className="font-bold text-gray-900 text-sm mb-1">
-                  <span style={{ color: AXIS_COLOR[axis] }}>■</span>{" "}
-                  {AXIS_LABELS[axis]}（{AXIS_DESC[axis]}）
-                </p>
-                <p className="text-sm text-gray-600 leading-relaxed">{axisAdvice[axis]}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <div className="bg-blue-600 rounded-2xl p-8 text-center text-white shadow-xl shadow-blue-200">
-            <p className="text-xl font-extrabold mb-2">次のステップ</p>
-            <p className="text-blue-200 text-sm mb-6">
-              詳細な課題分析・改善ロードマップの作成はProプランで。
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <a
-                href="/#pricing"
-                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-full transition-colors shadow-lg shadow-orange-300"
-              >
-                Proプランで詳細レポートを見る
-              </a>
-              <button
-                onClick={reset}
-                className="flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold py-3 px-8 rounded-full hover:bg-white/10 transition-colors"
-              >
-                <RotateCcw size={16} /> もう一度診断する
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     );
   }
