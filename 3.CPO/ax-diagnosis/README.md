@@ -45,29 +45,41 @@ Level 5が最上位。スコアに応じて5段階で評価します。
 | 20〜39 | Level 2 取組中 | 基礎的な取り組みを始めている段階 |
 | 0〜19 | Level 1 初期 | これからAXに取り組む段階 |
 
+## 画面構成
+
+| パス | 内容 |
+|------|------|
+| `/` | LP（ヒーロー・ペイン・ソリューション・料金表） |
+| `/diagnosis` | 診断画面（Depth選択 → 質問 → 回答） |
+| `/diagnosis/result` | 結果画面（総合スコア・ヒートマップ・領域別リング・アドバイス） |
+
 ## 技術スタック
 
 - **フレームワーク**: Next.js 16 (App Router)
 - **言語**: TypeScript
 - **スタイリング**: Tailwind CSS v4
-- **UIコンポーネント**: shadcn/ui
+- **UIコンポーネント**: shadcn/ui、@base-ui/react
 - **アイコン**: lucide-react
-- **認証**: Clerk（予定）
-- **データベース**: Supabase（予定）
+- **トースト通知**: sonner
+- **認証**: Clerk（@clerk/nextjs インストール済み・実装予定）
+- **データベース**: Supabase（@supabase/supabase-js インストール済み・実装予定）
 
 ## ディレクトリ構成
 
 ```
 ax-diagnosis/
 ├── app/
-│   ├── page.tsx          # ランディングページ（LP）
+│   ├── layout.tsx            # ルートレイアウト
+│   ├── page.tsx              # ランディングページ（LP）
 │   └── diagnosis/
-│       └── page.tsx      # 診断画面（質問→回答→スコア表示）
+│       ├── page.tsx          # 診断画面（Depth選択→質問フロー）
+│       └── result/
+│           └── page.tsx      # 診断結果ページ（ヒートマップ・スコア・アドバイス）
 ├── lib/
-│   ├── questions.ts      # 全84問の診断データ・スコアリングロジック
+│   ├── questions.ts          # 診断データ・スコアリングロジック
 │   └── utils.ts
 └── components/
-    └── ui/               # shadcn/ui コンポーネント
+    └── ui/                   # shadcn/ui コンポーネント
 ```
 
 ## ローカル開発
