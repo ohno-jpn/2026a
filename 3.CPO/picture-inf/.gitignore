@@ -1,0 +1,7 @@
+uploads/
+previews/
+batch_output/
+Output/
+venv/
+__pycache__/
+*.pyc

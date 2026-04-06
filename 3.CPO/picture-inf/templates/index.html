@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>写真EXIF情報抽出</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 16px;
+    }
+    h1 { font-size: 26px; color: #333; text-align: center; }
+    p.sub { font-size: 14px; color: #888; text-align: center; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 36px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .select-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .pick-btn {
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      padding: 30px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: #fff;
+    }
+    .pick-btn:hover { border-color: #555; background: #fafafa; }
+    .pick-btn.active { border-color: #1a73e8; background: #f0f7ff; }
+    .pick-btn .icon { font-size: 38px; display: block; margin-bottom: 8px; }
+    .pick-btn p { font-size: 14px; color: #555; }
+    input[type="file"] { display: none; }
+    .selected-name {
+      text-align: center;
+      font-size: 13px;
+      color: #1a73e8;
+      font-weight: bold;
+      min-height: 20px;
+      margin-bottom: 4px;
+    }
+    .selected-count {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      min-height: 16px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-top: 20px;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
+    .btn:not(:disabled):hover { background: #555; }
+    .error { color: #c00; margin-top: 10px; text-align: center; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>写真 EXIF情報抽出ツール</h1>
+  <p class="sub">JPG / PNG / HEIC に対応</p>
+
+  <div class="card">
+    <!-- 1枚：単一ファイル -->
+    <form id="single-form" action="/upload" method="post" enctype="multipart/form-data">
+      <input type="file" id="photo" name="photo" accept="image/*"
+             onchange="onFileSelected(this)">
+    </form>
+
+    <!-- フォルダ：複数ファイル -->
+    <form id="batch-form" action="/batch_upload" method="post" enctype="multipart/form-data">
+      <input type="file" id="folder" name="photos" webkitdirectory multiple
+             onchange="onFolderSelected(this)">
+    </form>
+
+    <div class="select-row">
+      <div class="pick-btn" id="btn-photo" onclick="document.getElementById('photo').click()">
+        <span class="icon">📷</span>
+        <p>写真を1枚選択</p>
+      </div>
+      <div class="pick-btn" id="btn-folder" onclick="document.getElementById('folder').click()">
+        <span class="icon">📁</span>
+        <p>フォルダを選択</p>
+      </div>
+    </div>
+
+    <div class="selected-name" id="selected-name"></div>
+    <div class="selected-count" id="selected-count"></div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <button class="btn" id="submit-btn" disabled onclick="submitActive()">
+      EXIFを抽出する →
+    </button>
+  </div>
+
+  <script>
+    let activeForm = null;
+
+    function onFileSelected(input) {
+      if (!input.files.length) return;
+      activeForm = document.getElementById('single-form');
+      document.getElementById('btn-photo').classList.add('active');
+      document.getElementById('btn-folder').classList.remove('active');
+      document.getElementById('selected-name').textContent = input.files[0].name;
+      document.getElementById('selected-count').textContent = '';
+      document.getElementById('submit-btn').disabled = false;
+      document.getElementById('submit-btn').textContent = 'EXIFを抽出する →';
+    }
+
+    function onFolderSelected(input) {
+      if (!input.files.length) return;
+      const images = Array.from(input.files).filter(f =>
+        /\.(jpe?g|png|heic|heif)$/i.test(f.name)
+      );
+      activeForm = document.getElementById('batch-form');
+      document.getElementById('btn-folder').classList.add('active');
+      document.getElementById('btn-photo').classList.remove('active');
+      // フォルダ名を取得（パスの最初の部分）
+      const folderName = input.files[0].webkitRelativePath.split('/')[0];
+      document.getElementById('selected-name').textContent = '📁 ' + folderName;
+      document.getElementById('selected-count').textContent = `画像ファイル ${images.length} 件`;
+      document.getElementById('submit-btn').disabled = false;
+      document.getElementById('submit-btn').textContent = '一括処理してCSV作成 →';
+    }
+
+    function submitActive() {
+      if (activeForm) activeForm.submit();
+    }
+  </script>
+</body>
+</html>

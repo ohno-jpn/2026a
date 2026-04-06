@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一括処理結果</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 32px 20px;
+    }
+    .header {
+      max-width: 1200px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .back-btn {
+      padding: 8px 16px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      color: #333;
+    }
+    .back-btn:hover { background: #eee; }
+    .header h1 { font-size: 18px; color: #444; }
+    .summary { font-size: 13px; color: #888; }
+    .btn-download {
+      padding: 10px 24px;
+      background: #1a6b3a;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-download:hover { background: #2a8a50; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      max-width: 1200px;
+      margin: 0 auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      overflow: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    thead th {
+      background: #333;
+      color: #fff;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: normal;
+      position: sticky;
+      top: 0;
+    }
+    tbody tr:nth-child(even) { background: #f9f9f9; }
+    tbody tr:hover { background: #eef4ff; }
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #eee;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    tbody td a { color: #1a73e8; text-decoration: none; }
+    tbody td a:hover { text-decoration: underline; }
+    .no-data { text-align: center; padding: 60px; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <a href="/" class="back-btn">← 戻る</a>
+      <div>
+        <h1>一括処理結果</h1>
+        <div class="summary">{{ folder }} &nbsp;｜&nbsp; {{ rows|length }} 件</div>
+      </div>
+    </div>
+    {% if rows %}
+    <a href="/batch_download/{{ csv_filename }}" class="btn-download">CSVをダウンロード</a>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>ファイル名</th>
+          <th>撮影日時</th>
+          <th>国</th>
+          <th>郵便番号</th>
+          <th>都道府県</th>
+          <th>市区町村</th>
+          <th>住所番地</th>
+          <th>経度</th>
+          <th>緯度</th>
+          <th>高度</th>
+          <th>Google Map</th>
+          <th>撮影機材</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ row["ファイル名"] }}</td>
+          <td>{{ row["撮影日時"] }}</td>
+          <td>{{ row["撮影場所（国）"] }}</td>
+          <td>{{ row["撮影場所（郵便番号）"] }}</td>
+          <td>{{ row["撮影場所（都道府県）"] }}</td>
+          <td>{{ row["撮影場所（市区町村）"] }}</td>
+          <td>{{ row["撮影場所（住所番地）"] }}</td>
+          <td>{{ row["GPS情報（経度）"] }}</td>
+          <td>{{ row["GPS情報（緯度）"] }}</td>
+          <td>{{ row["GPS情報（高度）"] }}</td>
+          <td>
+            {% if row["Google Map"] %}
+            <a href="{{ row['Google Map'] }}" target="_blank">地図を開く</a>
+            {% endif %}
+          </td>
+          <td>{{ row["撮影機材"] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">画像ファイルが見つかりませんでした</div>
+    {% endif %}
+  </div>
+</body>
+</html>
