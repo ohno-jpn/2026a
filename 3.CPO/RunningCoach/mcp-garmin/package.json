@@ -1,0 +1,20 @@
+{
+  "name": "mcp-garmin",
+  "version": "0.1.0",
+  "description": "Garmin Connect MCP Server — RunningCoach",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "@supabase/supabase-js": "^2.49.4",
+    "axios": "^1.9.0",
+    "garmin-connect": "^1.6.2",
+    "oauth-1.0a": "^2.2.6",
+    "qs": "^6.14.0",
+    "zod": "^3.24.3"
+  }
+}
