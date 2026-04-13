@@ -255,21 +255,17 @@ export default function HrZonesPage() {
             </div>
 
             {/* レンジ */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-3">
               <span className="text-sm font-semibold text-gray-600 shrink-0">レンジ</span>
-              {RANGE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  onClick={() => setRange(opt.key)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    range === opt.key
-                      ? "bg-orange-500 text-white"
-                      : "bg-gray-50 border border-gray-200 text-gray-600 hover:border-orange-300"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              <select
+                value={range}
+                onChange={(e) => setRange(e.target.value as RangeType)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
+              >
+                {RANGE_OPTIONS.map((opt) => (
+                  <option key={opt.key} value={opt.key}>{opt.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 
