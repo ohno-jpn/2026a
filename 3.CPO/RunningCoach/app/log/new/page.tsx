@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, CheckCircle, AlertCircle, ChevronRight } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, ChevronRight, RefreshCw } from "lucide-react";
 import { parseGarminCSV } from "@/lib/garmin";
 import { saveWorkoutLog, generateId } from "@/lib/storage";
 import type { WorkoutLog, WorkoutTheme, ThemeTag, GarminActivity } from "@/lib/types";
@@ -42,6 +42,7 @@ export default function NewLogPage() {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [parseError, setParseError]   = useState("");
   const [dragging, setDragging]       = useState(false);
+  const [garminLoading, setGarminLoading] = useState(false);
 
   // Step 4: コメント
   const [selfComment, setSelfComment] = useState("");
@@ -50,6 +51,29 @@ export default function NewLogPage() {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
+  }
+
+  async function handleFetchFromGarmin() {
+    setGarminLoading(true);
+    setParseError("");
+    try {
+      const res = await fetch("/api/garmin/activities");
+      const data = await res.json();
+      if (!res.ok) {
+        setParseError(data.error ?? "Garmin Connect からの取得に失敗しました");
+        return;
+      }
+      if (!data.activities || data.activities.length === 0) {
+        setParseError("ランニングアクティビティが見つかりませんでした");
+        return;
+      }
+      setActivities(data.activities);
+      setSelectedIdx(0);
+    } catch {
+      setParseError("Garmin Connect への接続に失敗しました");
+    } finally {
+      setGarminLoading(false);
+    }
   }
 
   function handleFile(file: File) {
@@ -228,6 +252,23 @@ export default function NewLogPage() {
 
           {activities.length === 0 ? (
             <>
+              {/* Garmin Connect 直接取得 */}
+              <button
+                onClick={handleFetchFromGarmin}
+                disabled={garminLoading}
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-3 rounded-xl transition-colors mb-3"
+              >
+                <RefreshCw size={16} className={garminLoading ? "animate-spin" : ""} />
+                {garminLoading ? "Garmin Connect から取得中..." : "Garmin Connect から自動取得"}
+              </button>
+
+              <div className="flex items-center gap-3 my-3">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs text-gray-400">または</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              {/* CSV アップロード */}
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
@@ -249,7 +290,7 @@ export default function NewLogPage() {
                 </div>
               )}
               <p className="text-xs text-gray-400 mt-3">
-                GARMIN Connect → アクティビティ → 右上メニュー → エクスポート → CSV
+                CSV: GARMIN Connect → アクティビティ → 右上メニュー → エクスポート → CSV
               </p>
             </>
           ) : (
