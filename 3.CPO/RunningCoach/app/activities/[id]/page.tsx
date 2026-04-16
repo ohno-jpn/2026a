@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { PieChart, Pie, Cell, Tooltip as PieTooltip, ResponsiveContainer } from "recharts";
-import { ChevronLeft, Star, Send, CheckCircle, AlertCircle, Loader } from "lucide-react";
+import { ChevronLeft, Star, Send, CheckCircle, AlertCircle, Loader, Scale, Moon } from "lucide-react";
 
 // ── 型 ───────────────────────────────────────────────────────
 interface Activity {
@@ -31,6 +31,13 @@ interface HrZone {
   zone: number;
   seconds: number;
   percentage: number;
+}
+
+interface SleepData {
+  totalHours: number;
+  deepMin: number;
+  lightMin: number;
+  remMin: number;
 }
 
 interface Assessment {
@@ -112,6 +119,12 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
   const [assessment, setAssessment] = useState<Assessment>({ rating: 0, comment: "" });
   const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [weight, setWeight] = useState<number | null>(null);
+  const [sleep, setSleep] = useState<SleepData | null>(null);
+  const [loadingHealth, setLoadingHealth] = useState(false);
+  const [garminRpe, setGarminRpe] = useState<number | null>(null);
+  const [garminFeel, setGarminFeel] = useState<string | null>(null);
+  const [loadingGarminExt, setLoadingGarminExt] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -123,6 +136,26 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
       } else {
         setActivity(json.activity);
         setZones(json.zones ?? []);
+        // 体重・睡眠をアクティビティの日付で取得
+        if (json.activity?.date) {
+          setLoadingHealth(true);
+          fetch(`/api/garmin/health?date=${json.activity.date}`)
+            .then(r => r.json())
+            .then(h => {
+              setWeight(h.weight ?? null);
+              setSleep(h.sleep ?? null);
+            })
+            .finally(() => setLoadingHealth(false));
+        }
+        // Garmin RPE・コンディションを取得
+        setLoadingGarminExt(true);
+        fetch(`/api/activities/${id}/garmin-ext`)
+          .then(r => r.json())
+          .then(g => {
+            setGarminRpe(g.rpe ?? null);
+            setGarminFeel(g.feel_label ?? null);
+          })
+          .finally(() => setLoadingGarminExt(false));
       }
       setLoading(false);
     }
@@ -310,6 +343,96 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Garmin 評価（RPE・コンディション） */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="text-sm font-bold text-gray-700 mb-3">Garmin 評価</h3>
+              {loadingGarminExt ? (
+                <p className="text-gray-400 text-sm text-center py-3">Garmin から取得中...</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {/* 自分が感じた運動量 */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs text-gray-400 mb-2">自分が感じた運動量</p>
+                    {garminRpe != null ? (
+                      <div>
+                        <div className="flex items-end gap-1 mb-2">
+                          <span className="text-2xl font-bold text-gray-900">{garminRpe}</span>
+                          <span className="text-xs text-gray-400 mb-1">/ 10</span>
+                        </div>
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: 10 }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="flex-1 h-2 rounded-full"
+                              style={{
+                                backgroundColor: i < garminRpe
+                                  ? garminRpe <= 3 ? "#60a5fa"
+                                    : garminRpe <= 6 ? "#34d399"
+                                    : garminRpe <= 8 ? "#f59e0b"
+                                    : "#f87171"
+                                  : "#e5e7eb"
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">未設定</p>
+                    )}
+                  </div>
+                  {/* フィーリング */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs text-gray-400 mb-2">フィーリング</p>
+                    {garminFeel ? (
+                      <p className="text-lg font-bold text-gray-900">{garminFeel}</p>
+                    ) : (
+                      <p className="text-sm text-gray-400">未設定</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-3">Garmin アプリでワークアウト後に設定した値</p>
+            </div>
+
+            {/* 体重・睡眠 */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="text-sm font-bold text-gray-700 mb-3">健康データ</h3>
+              {loadingHealth ? (
+                <p className="text-gray-400 text-sm text-center py-3">Garmin から取得中...</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center gap-1">
+                    <Scale size={20} className="text-blue-400" />
+                    <p className="text-xs text-gray-400">体重</p>
+                    <p className="text-2xl font-bold text-gray-900">{weight ?? "—"}</p>
+                    {weight && <p className="text-xs text-gray-400">kg</p>}
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center gap-1">
+                    <Moon size={20} className="text-indigo-400" />
+                    <p className="text-xs text-gray-400">睡眠時間</p>
+                    <p className="text-2xl font-bold text-gray-900">{sleep ? sleep.totalHours : "—"}</p>
+                    {sleep && <p className="text-xs text-gray-400">時間</p>}
+                  </div>
+                  {sleep && (
+                    <div className="col-span-2 bg-indigo-50 rounded-xl p-3 flex justify-around text-center">
+                      <div>
+                        <p className="text-xs text-indigo-400">深い眠り</p>
+                        <p className="text-sm font-bold text-indigo-800">{sleep.deepMin}分</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-indigo-400">浅い眠り</p>
+                        <p className="text-sm font-bold text-indigo-800">{sleep.lightMin}分</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-indigo-400">REM</p>
+                        <p className="text-sm font-bold text-indigo-800">{sleep.remMin}分</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* 自己評価 */}
