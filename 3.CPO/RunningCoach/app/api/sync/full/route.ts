@@ -1,4 +1,3 @@
-import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { GarminConnect } from "garmin-connect";
 import { existsSync } from "fs";
@@ -91,60 +90,83 @@ async function upsertActivity(supabase: ReturnType<typeof getSupabase>, garmin: 
       seconds: z.seconds,
       percentage: totalSec > 0 ? Math.round((z.seconds / totalSec) * 10000) / 100 : 0,
     }));
-    const { error: zErr } = await supabase
-      .from("hr_zones")
-      .upsert(zoneRows, { onConflict: "activity_id,zone" });
-    if (zErr) throw new Error(`hr_zones upsert 失敗: ${zErr.message}`);
+    await supabase.from("hr_zones").upsert(zoneRows, { onConflict: "activity_id,zone" });
   }
-
-  return { id: row.id, date: row.date, distance_km: row.distance_km, hasZone: !!hrZonesData };
 }
 
-export async function POST(req: NextRequest) {
-  const { days = 30, mode = "full" } = await req.json().catch(() => ({})) as { days?: number; mode?: "full" | "diff" };
+export async function GET() {
+  const encoder = new TextEncoder();
 
-  try {
-    const garmin = await getGarminClient();
-    const supabase = getSupabase();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (data: object) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      };
 
-    const rawList = await garmin.getActivities(0, 200) as Record<string, unknown>[];
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
+      try {
+        send({ type: "connecting" });
+        const garmin = await getGarminClient();
+        const supabase = getSupabase();
+        send({ type: "connected" });
 
-    const filtered = rawList.filter((a) => {
-      const d = new Date((a.startTimeLocal ?? a.startTimeGMT ?? 0) as string);
-      const type = String((a.activityType as Record<string, string>)?.typeKey ?? "").toLowerCase();
-      return d >= cutoff && (type.includes("running") || Number(a.distance ?? 0) > 0);
-    });
+        let offset = 0;
+        const pageSize = 100;
+        let totalSynced = 0;
+        let totalSkipped = 0;
+        let totalFetched = 0;
 
-    let toSync = filtered;
-    let skipped = 0;
+        while (true) {
+          const rawList = await garmin.getActivities(offset, pageSize) as unknown as Record<string, unknown>[];
+          if (!rawList || rawList.length === 0) break;
 
-    if (mode === "diff") {
-      // Supabase に既存のIDを取得して差分のみ同期
-      const cutoffStr = cutoff.toISOString().slice(0, 10);
-      const { data: existing } = await supabase
-        .from("activities")
-        .select("id")
-        .gte("date", cutoffStr);
-      const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id));
-      toSync = filtered.filter((a) => !existingIds.has(String(a.activityId)));
-      skipped = filtered.length - toSync.length;
-    }
+          totalFetched += rawList.length;
 
-    const results: { id: string; date: string; distance_km: number; hasZone: boolean }[] = [];
-    for (const raw of toSync) {
-      const result = await upsertActivity(supabase, garmin, raw);
-      results.push(result);
-    }
+          // Supabase に既存のIDを確認
+          const garminIds = rawList.map((a) => String(a.activityId));
+          const { data: existing } = await supabase
+            .from("activities")
+            .select("id")
+            .in("id", garminIds);
+          const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id));
 
-    return NextResponse.json({
-      synced: results.length,
-      skipped,
-      activities: results,
-    });
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "不明なエラー";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+          const toSync = rawList.filter((a) => !existingIds.has(String(a.activityId)));
+          totalSkipped += rawList.length - toSync.length;
+
+          for (const raw of toSync) {
+            await upsertActivity(supabase, garmin, raw);
+            totalSynced++;
+            send({ type: "progress", synced: totalSynced, skipped: totalSkipped, fetched: totalFetched });
+          }
+
+          // 新規がなくても進捗を通知
+          if (toSync.length === 0) {
+            send({ type: "progress", synced: totalSynced, skipped: totalSkipped, fetched: totalFetched });
+          }
+
+          // 最終ページ
+          if (rawList.length < pageSize) break;
+          offset += pageSize;
+
+          // レート制限対策
+          await new Promise((r) => setTimeout(r, 600));
+        }
+
+        send({ type: "done", synced: totalSynced, skipped: totalSkipped, fetched: totalFetched });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "不明なエラー";
+        send({ type: "error", message });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     return d.toISOString().slice(0, 10);
   })();
   const to = searchParams.get("to") ?? new Date().toISOString().slice(0, 10);
-  const limit = Math.min(Number(searchParams.get("limit") ?? 100), 200);
+  const limit = Math.min(Number(searchParams.get("limit") ?? 100), 2000);
 
   const supabase = getSupabase();
   const { data, error } = await supabase
