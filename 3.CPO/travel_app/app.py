@@ -169,6 +169,21 @@ def parse_folder_name(folder_name):
     return None, folder_name
 
 
+# ---------- Helpers ----------
+
+def rebuild_trip_prefectures(trip_id):
+    """全写真の都道府県から TripPrefecture を再集計"""
+    TripPrefecture.query.filter_by(trip_id=trip_id).delete()
+    photos = Photo.query.filter_by(trip_id=trip_id).all()
+    pref_counts = {}
+    for p in photos:
+        if p.prefecture:
+            pref_counts[p.prefecture] = pref_counts.get(p.prefecture, 0) + 1
+    for pref, count in pref_counts.items():
+        db.session.add(TripPrefecture(trip_id=trip_id, prefecture=pref, photo_count=count))
+    db.session.commit()
+
+
 # ---------- Routes ----------
 
 @app.route('/')
@@ -281,6 +296,28 @@ def trip_detail(trip_id):
     trip = Trip.query.get_or_404(trip_id)
     selected = Photo.query.filter_by(trip_id=trip_id, is_selected=True).all()
     return render_template('trip.html', trip=trip, selected=selected)
+
+
+@app.route('/trips/<int:trip_id>/edit', methods=['POST'])
+def edit_trip(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    new_title = request.form.get('title', '').strip()
+    if new_title:
+        trip.title = new_title
+    trip.description = request.form.get('description', '').strip()
+    db.session.commit()
+    return redirect(url_for('trip_detail', trip_id=trip_id))
+
+
+@app.route('/trips/<int:trip_id>/photos/<int:photo_id>/edit', methods=['POST'])
+def edit_photo(trip_id, photo_id):
+    photo = Photo.query.filter_by(id=photo_id, trip_id=trip_id).first_or_404()
+    photo.prefecture = request.form.get('prefecture', '').strip()
+    photo.city       = request.form.get('city', '').strip()
+    photo.country    = request.form.get('country', '').strip()
+    db.session.commit()
+    rebuild_trip_prefectures(trip_id)
+    return redirect(url_for('trip_detail', trip_id=trip_id))
 
 
 @app.route('/trips')
