@@ -1,0 +1,63 @@
+/* 写真選択カード */
+.photo-card {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border: 2px solid transparent;
+}
+.photo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.photo-card.selected {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 3px rgba(13,110,253,0.25);
+}
+.photo-thumb {
+  height: 140px;
+  object-fit: cover;
+}
+
+/* 旅行詳細 写真 */
+.trip-photo {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+}
+
+/* EXIF テーブル */
+.exif-table th {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.exif-table td {
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+/* 旅行一覧カード */
+.trip-list-card {
+  transition: transform 0.15s, box-shadow 0.15s;
+  color: inherit;
+}
+.trip-list-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+/* 地図ツールチップ */
+.map-tooltip {
+  position: absolute;
+  padding: 6px 10px;
+  background: rgba(30,30,30,0.88);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+}
+
+/* SVG 都道府県パス */
+#japan-map svg path {
+  transition: fill 0.2s;
+}

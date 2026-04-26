@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}写真を5枚選択 — {{ trip.title }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-1"><i class="bi bi-images"></i> 思い出の5枚を選択</h2>
+<p class="text-muted mb-4">旅行：{{ trip.title }}　合計 {{ photos|length }} 枚</p>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="sticky-top bg-white border-bottom py-2 mb-3" style="z-index:100;">
+  <div class="d-flex align-items-center gap-3">
+    <span class="fw-bold">選択中：<span id="counter">0</span> / 5 枚</span>
+    <div class="progress flex-grow-1" style="height:8px;">
+      <div id="progressBar" class="progress-bar" style="width:0%"></div>
+    </div>
+    <button type="submit" form="selectForm" class="btn btn-primary btn-sm" id="submitBtn" disabled>
+      <i class="bi bi-check2-circle"></i> 決定
+    </button>
+  </div>
+</div>
+
+<form method="post" id="selectForm">
+  <div class="row g-3">
+    {% for photo in photos %}
+    <div class="col-6 col-md-4 col-lg-3">
+      <label class="photo-card card h-100 {% if photo.is_selected %}selected{% endif %}"
+             for="photo_{{ photo.id }}">
+        <img src="{{ url_for('serve_photo', trip_id=trip.id, filename=photo.filename) }}"
+             class="card-img-top photo-thumb" loading="lazy">
+        <div class="card-footer p-1 text-center">
+          <input type="checkbox" name="selected_photos" value="{{ photo.id }}"
+                 id="photo_{{ photo.id }}" class="photo-checkbox visually-hidden"
+                 {% if photo.is_selected %}checked{% endif %}>
+          <small class="text-muted d-block text-truncate" title="{{ photo.filename }}">
+            {{ photo.filename }}
+          </small>
+          {% if photo.prefecture %}
+          <small class="badge bg-secondary">{{ photo.prefecture }}</small>
+          {% endif %}
+        </div>
+      </label>
+    </div>
+    {% endfor %}
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MAX = 5;
+const checkboxes = document.querySelectorAll('.photo-checkbox');
+const counter     = document.getElementById('counter');
+const progressBar = document.getElementById('progressBar');
+const submitBtn   = document.getElementById('submitBtn');
+
+function update() {
+  const checked = document.querySelectorAll('.photo-checkbox:checked').length;
+  counter.textContent = checked;
+  progressBar.style.width = (checked / MAX * 100) + '%';
+  progressBar.className = 'progress-bar ' + (checked === MAX ? 'bg-success' : 'bg-primary');
+  submitBtn.disabled = (checked !== MAX);
+}
+
+checkboxes.forEach(cb => {
+  cb.addEventListener('change', function () {
+    const checked = document.querySelectorAll('.photo-checkbox:checked').length;
+    if (this.checked && checked > MAX) {
+      this.checked = false;
+    }
+    // カード選択スタイル
+    this.closest('.photo-card').classList.toggle('selected', this.checked);
+    update();
+  });
+});
+
+update();
+</script>
+{% endblock %}

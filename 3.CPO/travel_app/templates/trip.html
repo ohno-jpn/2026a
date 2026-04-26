@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}{{ trip.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-1">
+  <div>
+    <h2 class="mb-0">{{ trip.title }}</h2>
+    {% if trip.folder_date %}
+    <p class="text-muted mb-0">
+      <i class="bi bi-calendar3"></i> {{ trip.folder_date.strftime('%Y年%m月%d日') }}
+    </p>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('select_photos', trip_id=trip.id) }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil"></i> 写真を選び直す
+    </a>
+    <a href="{{ url_for('map_view') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-map"></i> 日本地図へ
+    </a>
+  </div>
+</div>
+
+{% if trip.description %}
+<div class="card bg-light border-0 mb-4 mt-3">
+  <div class="card-body py-3">
+    <p class="mb-0" style="white-space: pre-wrap;">{{ trip.description }}</p>
+  </div>
+</div>
+{% endif %}
+
+{% if selected %}
+<h4 class="mt-4 mb-3"><i class="bi bi-star-fill text-warning"></i> 思い出の5枚</h4>
+<div class="row g-4">
+  {% for photo in selected %}
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <img src="{{ url_for('serve_photo', trip_id=trip.id, filename=photo.filename) }}"
+           class="card-img-top trip-photo" alt="{{ photo.filename }}">
+      <div class="card-body p-3">
+        <p class="card-title fw-bold mb-2 text-truncate" title="{{ photo.filename }}">
+          <i class="bi bi-image"></i> {{ photo.filename }}
+        </p>
+        <table class="table table-sm table-borderless mb-0 exif-table">
+          <tbody>
+            <tr>
+              <th class="text-muted pe-3" style="width:40%">撮影日時</th>
+              <td>{{ photo.datetime_taken or '情報なし' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">都道府県</th>
+              <td>{{ photo.prefecture or '情報なし' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">市区町村</th>
+              <td>{{ photo.city or '情報なし' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">国</th>
+              <td>{{ photo.country or '情報なし' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">GPS（緯度）</th>
+              <td>{{ '%.6f'|format(photo.latitude) if photo.latitude is not none else '情報なし' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">GPS（経度）</th>
+              <td>{{ '%.6f'|format(photo.longitude) if photo.longitude is not none else '情報なし' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">GPS（高度）</th>
+              <td>{{ photo.altitude or '情報なし' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">撮影機材</th>
+              <td>{{ photo.camera or '情報なし' }}</td>
+            </tr>
+            {% if photo.latitude and photo.longitude %}
+            <tr>
+              <th class="text-muted">Google Map</th>
+              <td>
+                <a href="https://maps.google.com/?q={{ photo.latitude }},{{ photo.longitude }}"
+                   target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-0">
+                  <i class="bi bi-geo-alt"></i> 開く
+                </a>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="alert alert-warning mt-4">
+  <i class="bi bi-exclamation-triangle"></i> まだ写真が選択されていません。
+  <a href="{{ url_for('select_photos', trip_id=trip.id) }}">5枚を選択してください</a>
+</div>
+{% endif %}
+
+<div class="mt-4 d-flex gap-2">
+  <a href="{{ url_for('trip_list') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> 旅行一覧
+  </a>
+  <a href="{{ url_for('map_view') }}" class="btn btn-outline-primary">
+    <i class="bi bi-map"></i> 日本地図で見る
+  </a>
+</div>
+{% endblock %}

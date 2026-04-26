@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block title %}日本地図 — 訪問記録{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0"><i class="bi bi-map"></i> 訪問都道府県マップ</h2>
+    <p class="text-muted small mb-0">
+      訪問済み：<strong>{{ pref_data|length }}</strong> / 47 都道府県
+    </p>
+  </div>
+  <a href="{{ url_for('trip_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-collection"></i> 旅行一覧
+  </a>
+</div>
+
+<!-- 凡例 -->
+<div class="d-flex align-items-center gap-2 mb-3">
+  <span class="small text-muted">訪問回数：</span>
+  <div class="legend-bar"></div>
+  <span class="small text-muted">少ない</span>
+  <div id="legendGradient" style="width:150px; height:16px; border-radius:4px;"></div>
+  <span class="small text-muted">多い</span>
+  <div class="ms-3 d-flex align-items-center gap-1">
+    <div style="width:16px;height:16px;background:#f1f5f9;border:1px solid #ccc;border-radius:2px;"></div>
+    <span class="small text-muted">未訪問</span>
+  </div>
+</div>
+
+<div id="japan-map" class="text-center"></div>
+
+<!-- Prefecture popup modal -->
+<div class="modal fade" id="prefModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-geo-alt-fill text-primary"></i>
+          <span id="modalPrefName"></span> の旅行
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <ul class="list-group list-group-flush" id="modalTripList"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script>
+const PREF_DATA  = {{ pref_data | tojson }};
+const MAX_VISITS = {{ max_visits }};
+
+// 訪問回数 → 青の濃さ（1回=薄い青, max=濃い青）
+const colorScale = d3.scaleLinear()
+    .domain([1, Math.max(MAX_VISITS, 2)])
+    .range(['#bfdbfe', '#1e3a8a'])
+    .clamp(true);
+
+// 凡例グラデーション
+const canvas = document.createElement('canvas');
+canvas.width = 150; canvas.height = 1;
+const ctx = canvas.getContext('2d');
+const grad = ctx.createLinearGradient(0, 0, 150, 0);
+grad.addColorStop(0, '#bfdbfe');
+grad.addColorStop(1, '#1e3a8a');
+ctx.fillStyle = grad;
+ctx.fillRect(0, 0, 150, 1);
+const legendEl = document.getElementById('legendGradient');
+legendEl.style.background = 'linear-gradient(to right, #bfdbfe, #1e3a8a)';
+
+// SVG サイズ
+const W = 820, H = 720;
+const svg = d3.select('#japan-map')
+    .append('svg')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .style('width', '100%')
+    .style('max-width', `${W}px`);
+
+const projection = d3.geoMercator()
+    .center([137, 37])
+    .scale(1650)
+    .translate([W / 2, H / 2]);
+
+const pathGen = d3.geoPath().projection(projection);
+
+// Tooltip
+const tooltip = d3.select('body').append('div')
+    .attr('class', 'map-tooltip')
+    .style('opacity', 0);
+
+d3.json("{{ url_for('static', filename='japan.geojson') }}").then(function (geojson) {
+    svg.selectAll('path')
+        .data(geojson.features)
+        .enter()
+        .append('path')
+        .attr('d', pathGen)
+        .attr('fill', d => {
+            const p = d.properties.nam_ja;
+            return PREF_DATA[p] ? colorScale(PREF_DATA[p].trip_count) : '#f1f5f9';
+        })
+        .attr('stroke', '#9ca3af')
+        .attr('stroke-width', 0.6)
+        .style('cursor', d => PREF_DATA[d.properties.nam_ja] ? 'pointer' : 'default')
+        .on('mouseover', function (event, d) {
+            const p = d.properties.nam_ja;
+            d3.select(this).attr('stroke', '#374151').attr('stroke-width', 1.5);
+            const info = PREF_DATA[p];
+            tooltip.transition().duration(150).style('opacity', 0.95);
+            tooltip.html(info
+                ? `<strong>${p}</strong><br>${info.trip_count} 回訪問`
+                : `<strong>${p}</strong><br>未訪問`)
+                .style('left', (event.pageX + 12) + 'px')
+                .style('top',  (event.pageY - 28) + 'px');
+        })
+        .on('mousemove', function (event) {
+            tooltip.style('left', (event.pageX + 12) + 'px')
+                   .style('top',  (event.pageY - 28) + 'px');
+        })
+        .on('mouseout', function () {
+            d3.select(this).attr('stroke', '#9ca3af').attr('stroke-width', 0.6);
+            tooltip.transition().duration(200).style('opacity', 0);
+        })
+        .on('click', function (event, d) {
+            const p = d.properties.nam_ja;
+            if (PREF_DATA[p]) showModal(p, PREF_DATA[p]);
+        });
+
+    // 都道府県名ラベル
+    svg.selectAll('.pref-label')
+        .data(geojson.features)
+        .enter()
+        .append('text')
+        .attr('class', 'pref-label')
+        .attr('transform', d => {
+            const c = pathGen.centroid(d);
+            return `translate(${c[0]},${c[1]})`;
+        })
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('font-size', '6.5px')
+        .attr('fill', d => PREF_DATA[d.properties.nam_ja] ? '#1e3a8a' : '#6b7280')
+        .attr('pointer-events', 'none')
+        .text(d => (d.properties.nam_ja || '').replace(/[都道府県]$/, ''));
+});
+
+function showModal(pref, data) {
+    document.getElementById('modalPrefName').textContent = pref;
+    const list = document.getElementById('modalTripList');
+    list.innerHTML = '';
+    data.trips.forEach(t => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item list-group-item-action px-4';
+        li.innerHTML = `
+            <a href="${t.url}" class="text-decoration-none d-block py-1">
+              <div class="fw-bold text-dark">${t.title}</div>
+              <small class="text-muted"><i class="bi bi-calendar3"></i> ${t.date}</small>
+            </a>`;
+        list.appendChild(li);
+    });
+    new bootstrap.Modal(document.getElementById('prefModal')).show();
+}
+</script>
+{% endblock %}

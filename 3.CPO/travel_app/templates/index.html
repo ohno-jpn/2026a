@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}アップロード{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <h2 class="mb-4"><i class="bi bi-cloud-upload"></i> 旅行写真をアップロード</h2>
+
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data" id="uploadForm">
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">フォルダを選択</label>
+            <input type="file" name="photos" id="folderInput" class="form-control"
+                   webkitdirectory multiple accept="image/*" required>
+            <div class="form-text">フォルダ名は <code>YYYYMMDD_タイトル</code> 形式を推奨（例：<code>20260422_東京旅行</code>）</div>
+          </div>
+
+          <div id="folderInfo" class="alert alert-info d-none">
+            <i class="bi bi-folder2-open"></i>
+            <span id="folderInfoText"></span>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">旅行タイトル</label>
+            <input type="text" name="title" id="titleInput" class="form-control"
+                   placeholder="例：東京旅行" maxlength="100">
+            <div class="form-text">空欄の場合はフォルダ名から自動取得します</div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-bold">説明文</label>
+            <textarea name="description" class="form-control" rows="4"
+                      placeholder="旅行の思い出を書いてください..."></textarea>
+          </div>
+
+          <div id="processingMsg" class="alert alert-warning d-none">
+            <div class="d-flex align-items-center">
+              <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+              写真を処理中です。GPS情報の取得に時間がかかる場合があります...
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+            <i class="bi bi-upload"></i> アップロードして写真を選択する
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const folderInput = document.getElementById('folderInput');
+const titleInput  = document.getElementById('titleInput');
+const folderInfo  = document.getElementById('folderInfo');
+const folderInfoText = document.getElementById('folderInfoText');
+
+folderInput.addEventListener('change', function () {
+  const files = Array.from(this.files).filter(f =>
+    /\.(jpg|jpeg|png|heic|heif)$/i.test(f.name));
+  if (files.length === 0) return;
+
+  const folderPath = files[0].webkitRelativePath.split('/')[0];
+  folderInfoText.textContent = `${folderPath} — 画像 ${files.length} 枚`;
+  folderInfo.classList.remove('d-none');
+
+  // フォルダ名から日付_タイトルを自動解析してタイトル欄を補完
+  if (!titleInput.value) {
+    const m = folderPath.match(/^\d{8}_(.+)$/);
+    if (m) titleInput.value = m[1];
+  }
+});
+
+document.getElementById('uploadForm').addEventListener('submit', function () {
+  document.getElementById('processingMsg').classList.remove('d-none');
+  document.getElementById('submitBtn').disabled = true;
+});
+</script>
+{% endblock %}

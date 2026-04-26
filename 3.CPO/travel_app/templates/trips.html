@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}旅行一覧{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0"><i class="bi bi-collection"></i> 旅行一覧</h2>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('map_view') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-map"></i> 日本地図
+    </a>
+    <a href="{{ url_for('index') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-circle"></i> 新しい旅行を追加
+    </a>
+  </div>
+</div>
+
+{% if trips %}
+<div class="row g-4">
+  {% for trip in trips %}
+  <div class="col-md-6 col-lg-4">
+    <a href="{{ url_for('trip_detail', trip_id=trip.id) }}" class="text-decoration-none">
+      <div class="card shadow-sm h-100 trip-list-card">
+        {% set thumb = trip.photos | selectattr('is_selected') | first %}
+        {% if thumb %}
+        <img src="{{ url_for('serve_photo', trip_id=trip.id, filename=thumb.filename) }}"
+             class="card-img-top" style="height:180px; object-fit:cover;" loading="lazy">
+        {% else %}
+        <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+             style="height:180px;">
+          <i class="bi bi-image text-muted" style="font-size:3rem;"></i>
+        </div>
+        {% endif %}
+        <div class="card-body">
+          <h5 class="card-title mb-1">{{ trip.title }}</h5>
+          {% if trip.folder_date %}
+          <p class="text-muted small mb-2">
+            <i class="bi bi-calendar3"></i> {{ trip.folder_date.strftime('%Y年%m月%d日') }}
+          </p>
+          {% endif %}
+          {% set prefs = trip.prefectures | map(attribute='prefecture') | list %}
+          {% if prefs %}
+          <div class="d-flex flex-wrap gap-1">
+            {% for p in prefs %}
+            <span class="badge bg-secondary">{{ p }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-inbox" style="font-size:4rem;"></i>
+  <p class="mt-3">旅行がまだ登録されていません。</p>
+  <a href="{{ url_for('index') }}" class="btn btn-primary">
+    <i class="bi bi-upload"></i> 最初の旅行を追加する
+  </a>
+</div>
+{% endif %}
+{% endblock %}
