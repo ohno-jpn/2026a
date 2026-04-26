@@ -1,0 +1,6 @@
+travel.db
+uploads/
+previews/
+venv/
+__pycache__/
+*.pyc
