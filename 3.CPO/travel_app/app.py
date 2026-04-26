@@ -309,6 +309,19 @@ def edit_trip(trip_id):
     return redirect(url_for('trip_detail', trip_id=trip_id))
 
 
+@app.route('/trips/<int:trip_id>/delete', methods=['POST'])
+def delete_trip(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    # アップロードファイルとプレビューをディスクから削除
+    for folder in (app.config['UPLOAD_FOLDER'], app.config['PREVIEW_FOLDER']):
+        target = os.path.join(folder, str(trip_id))
+        if os.path.isdir(target):
+            shutil.rmtree(target)
+    db.session.delete(trip)
+    db.session.commit()
+    return redirect(url_for('trip_list'))
+
+
 @app.route('/trips/<int:trip_id>/photos/<int:photo_id>/edit', methods=['POST'])
 def edit_photo(trip_id, photo_id):
     photo = Photo.query.filter_by(id=photo_id, trip_id=trip_id).first_or_404()
