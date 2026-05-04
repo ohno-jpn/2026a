@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { BarChart3, RotateCcw } from "lucide-react";
+import { BarChart3, RotateCcw, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { AXIS_LABELS, AXIS_DESC, type Axis } from "@/lib/questions";
 import { saveDiagnosis } from "@/lib/db/diagnoses";
 
@@ -29,11 +29,10 @@ const AXIS_COLOR: Record<Axis, string> = {
   ind_soft: "#16a34a",
 };
 
+// 診断アンケートで到達できるのは最大 Level 3。Level 4・5 は研修課題の完了で解放。
 const SCORE_LEVELS = [
-  { min: 80, label: "Level 5", sublabel: "先進",   color: "text-green-700",  bg: "bg-green-50",  border: "border-green-200"  },
-  { min: 60, label: "Level 4", sublabel: "発展",   color: "text-lime-700",   bg: "bg-lime-50",   border: "border-lime-200"   },
-  { min: 40, label: "Level 3", sublabel: "整備中", color: "text-yellow-700", bg: "bg-yellow-50", border: "border-yellow-200" },
-  { min: 20, label: "Level 2", sublabel: "取組中", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
+  { min: 67, label: "Level 3", sublabel: "整備中", color: "text-yellow-700", bg: "bg-yellow-50", border: "border-yellow-200" },
+  { min: 34, label: "Level 2", sublabel: "取組中", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
   { min:  0, label: "Level 1", sublabel: "初期",   color: "text-red-700",    bg: "bg-red-50",    border: "border-red-200"    },
 ];
 
@@ -42,10 +41,8 @@ function getScoreLevel(score: number) {
 }
 
 function heatStyle(score: number) {
-  if (score >= 80) return { bg: "#bbf7d0", border: "#86efac", text: "#14532d" };
-  if (score >= 60) return { bg: "#d9f99d", border: "#bef264", text: "#365314" };
-  if (score >= 40) return { bg: "#fef08a", border: "#fde047", text: "#713f12" };
-  if (score >= 20) return { bg: "#fed7aa", border: "#fdba74", text: "#7c2d12" };
+  if (score >= 67) return { bg: "#fef08a", border: "#fde047", text: "#713f12" };
+  if (score >= 34) return { bg: "#fed7aa", border: "#fdba74", text: "#7c2d12" };
   return              { bg: "#fecaca", border: "#fca5a5", text: "#7f1d1d" };
 }
 
@@ -63,23 +60,26 @@ function ScoreRing({ score, color, size = 72 }: { score: number; color: string; 
 }
 
 const AXIS_ADVICE: Record<Axis, (score: number) => string> = {
-  org_hard: (s) => s >= 60
-    ? "戦略・基盤の整備が進んでいます。さらなる高度化（API連携・継続改善ループ）を目指しましょう。"
+  org_hard: (s) => s >= 67
+    ? "診断上の最高レベル（Level 3）に到達しています。Level 4・5 は研修プログラムの受講・課題完了で解放されます。"
     : "全社AI戦略のKGI設定・ガバナンス整備・データ基盤構築を優先的に進めることを推奨します。",
-  org_soft: (s) => s >= 60
-    ? "学習する組織文化が醸成されています。ナレッジ共有の仕組みと評価制度のさらなる連動を検討しましょう。"
+  org_soft: (s) => s >= 67
+    ? "診断上の最高レベル（Level 3）に到達しています。Level 4・5 は研修プログラムの受講・課題完了で解放されます。"
     : "挑戦文化の醸成と、失敗を許容する心理的安全性の向上が急務です。まずは経営層の率先垂範から始めましょう。",
-  ind_hard: (s) => s >= 60
-    ? "AI技術の理解度が高い状態です。RAG・ワークフロー設計など応用・実装スキルの深化を図りましょう。"
+  ind_hard: (s) => s >= 67
+    ? "診断上の最高レベル（Level 3）に到達しています。Level 4・5 は研修プログラムの受講・課題完了で解放されます。"
     : "AIの基礎知識・セキュリティリスク・プロンプト技術の習得が必要です。体系的なリスキリングプログラムを設計しましょう。",
-  ind_soft: (s) => s >= 60
-    ? "AI活用の姿勢・思考習慣が身についています。周囲への横展開・メンタリングで組織全体を牽引しましょう。"
+  ind_soft: (s) => s >= 67
+    ? "診断上の最高レベル（Level 3）に到達しています。Level 4・5 は研修プログラムの受講・課題完了で解放されます。"
     : "業務課題の設定力・批判的思考・開放的なスタンスを育てる研修や1on1フォローを実施しましょう。",
 };
 
 export default function DiagnosisResultPage() {
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [diagnosisId, setDiagnosisId] = useState<string | null>(null);
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "error" | "all-correct">("idle");
+  const [emailMessage, setEmailMessage] = useState("");
   const saved = useRef(false);
 
   useEffect(() => {
@@ -103,6 +103,8 @@ export default function DiagnosisResultPage() {
               ind_soft: parsed.axisScores.ind_soft,
             },
             answers,
+          }).then((res) => {
+            if ("id" in res) setDiagnosisId(res.id);
           }).catch(() => {/* 未ログイン時は無視 */});
         }
       } catch { /* ignore */ }
@@ -133,6 +135,32 @@ export default function DiagnosisResultPage() {
     );
   }
 
+  async function sendEmail() {
+    if (!diagnosisId) return;
+    setEmailStatus("sending");
+    try {
+      const res = await fetch("/api/send-wrong-answers-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diagnosisId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEmailStatus("error");
+        setEmailMessage(data.error ?? "送信に失敗しました");
+      } else if (data.allCorrect) {
+        setEmailStatus("all-correct");
+        setEmailMessage("個人Hard領域は全問正解です！");
+      } else {
+        setEmailStatus("sent");
+        setEmailMessage(`不正解 ${data.sent} 問の解説をメール送信しました`);
+      }
+    } catch {
+      setEmailStatus("error");
+      setEmailMessage("ネットワークエラーが発生しました");
+    }
+  }
+
   const { totalScore, axisScores, level, completedAt } = result;
   const totalLevel = getScoreLevel(totalScore);
   const completedDate = new Date(completedAt).toLocaleDateString("ja-JP", {
@@ -153,6 +181,15 @@ export default function DiagnosisResultPage() {
         <a href="/" className="text-blue-600 text-sm font-semibold mb-8 inline-block hover:underline">
           ← トップに戻る
         </a>
+
+        {/* 診断レベル上限の説明バナー */}
+        <div className="mb-8 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+          <p className="font-bold mb-1">📋 診断で到達できるのは最大 Level 3 です</p>
+          <p className="text-amber-700 leading-relaxed">
+            このアンケート診断（最大64問）では成熟度の現状把握を行います。<br />
+            <strong>Level 4・5</strong> は研修プログラムの受講と課題完了によって初めて認定されます。
+          </p>
+        </div>
 
         {/* Header */}
         <div className="text-center mb-10">
@@ -233,18 +270,24 @@ export default function DiagnosisResultPage() {
           {/* 凡例 */}
           <div className="mt-5 flex items-center justify-center gap-3 flex-wrap">
             {[
-              { label: "Level 1 初期",   bg: "#fecaca", border: "#fca5a5" },
-              { label: "Level 2 取組中", bg: "#fed7aa", border: "#fdba74" },
-              { label: "Level 3 整備中", bg: "#fef08a", border: "#fde047" },
-              { label: "Level 4 発展",   bg: "#d9f99d", border: "#bef264" },
-              { label: "Level 5 先進",   bg: "#bbf7d0", border: "#86efac" },
-            ].map(({ label, bg, border }) => (
+              { label: "Level 1 初期",   bg: "#fecaca", border: "#fca5a5", locked: false },
+              { label: "Level 2 取組中", bg: "#fed7aa", border: "#fdba74", locked: false },
+              { label: "Level 3 整備中", bg: "#fef08a", border: "#fde047", locked: false },
+              { label: "Level 4 発展",   bg: "#e5e7eb", border: "#d1d5db", locked: true  },
+              { label: "Level 5 先進",   bg: "#e5e7eb", border: "#d1d5db", locked: true  },
+            ].map(({ label, bg, border, locked }) => (
               <div key={label} className="flex items-center gap-1">
                 <div className="w-4 h-4 rounded border" style={{ backgroundColor: bg, borderColor: border }} />
-                <span className="text-xs text-gray-500">{label}</span>
+                <span className={`text-xs ${locked ? "text-gray-400" : "text-gray-500"}`}>
+                  {label}{locked ? " 🔒" : ""}
+                </span>
               </div>
             ))}
           </div>
+          {/* Level上限の注記 */}
+          <p className="mt-3 text-center text-xs text-gray-400">
+            🔒 Level 4・5 は研修プログラムの課題完了によって解放されます
+          </p>
         </div>
 
         {/* ── 領域別スコア（リング） ── */}
@@ -288,6 +331,49 @@ export default function DiagnosisResultPage() {
             </div>
           ))}
         </div>
+
+        {/* ── 個人Hard 解説メール ── */}
+        {diagnosisId && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
+            <h2 className="text-base font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <Mail size={18} className="text-blue-600" /> 個人Hard 不正解問題の解説をメールで受け取る
+            </h2>
+            <p className="text-xs text-gray-400 mb-4">
+              個人Hard（テクニカルスキル）領域で間違えた問題の解説を、登録メールアドレスに送信します。
+            </p>
+            {emailStatus === "idle" && (
+              <button
+                onClick={sendEmail}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-full text-sm transition-colors flex items-center gap-2"
+              >
+                <Mail size={14} /> 解説メールを送信する
+              </button>
+            )}
+            {emailStatus === "sending" && (
+              <p className="text-sm text-gray-500 animate-pulse">送信中...</p>
+            )}
+            {emailStatus === "sent" && (
+              <p className="text-sm text-green-600 flex items-center gap-2">
+                <CheckCircle2 size={16} /> {emailMessage}
+              </p>
+            )}
+            {emailStatus === "all-correct" && (
+              <p className="text-sm text-green-600 flex items-center gap-2">
+                <CheckCircle2 size={16} /> {emailMessage}
+              </p>
+            )}
+            {emailStatus === "error" && (
+              <div>
+                <p className="text-sm text-red-500 flex items-center gap-2 mb-2">
+                  <AlertCircle size={16} /> {emailMessage}
+                </p>
+                <button onClick={() => setEmailStatus("idle")} className="text-xs text-blue-600 underline">
+                  再試行
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── CTA ── */}
         <div className="bg-blue-600 rounded-2xl p-8 text-center text-white shadow-xl shadow-blue-200">

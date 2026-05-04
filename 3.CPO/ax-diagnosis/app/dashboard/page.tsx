@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { getDiagnoses } from "@/lib/db/diagnoses";
+import { EmailButton } from "./email-button";
 
 const DEPTH_LABEL: Record<string, string> = {
   hook: "Hook（4問）",
@@ -11,10 +12,8 @@ const DEPTH_LABEL: Record<string, string> = {
 
 const SCORE_LEVEL = (score: number | null) => {
   if (score === null) return { label: "–", color: "text-gray-400" };
-  if (score >= 80) return { label: `${score}`, color: "text-green-400" };
-  if (score >= 60) return { label: `${score}`, color: "text-lime-400" };
-  if (score >= 40) return { label: `${score}`, color: "text-yellow-400" };
-  if (score >= 20) return { label: `${score}`, color: "text-orange-400" };
+  if (score >= 67) return { label: `${score}`, color: "text-yellow-400" };
+  if (score >= 34) return { label: `${score}`, color: "text-orange-400" };
   return { label: `${score}`, color: "text-red-400" };
 };
 
@@ -126,6 +125,7 @@ export default async function DashboardPage() {
                     <th className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 px-4 py-3">PH</th>
                     <th className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 px-4 py-3">PS</th>
                     <th className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 px-4 py-3">総合</th>
+                    <th className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 px-4 py-3">解説メール</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -141,6 +141,9 @@ export default async function DashboardPage() {
                       <td className="px-4 py-3 text-center text-sm"><ScoreBadge score={d.ps_score} /></td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-sm font-extrabold text-white">{d.total_score ?? "–"}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <EmailButton diagnosisId={d.id} />
                       </td>
                     </tr>
                   ))}

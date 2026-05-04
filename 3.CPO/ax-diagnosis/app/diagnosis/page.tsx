@@ -70,6 +70,11 @@ export default function DiagnosisPage() {
         "ax_diagnosis_result",
         JSON.stringify({ totalScore: total, axisScores: scores, level, completedAt: new Date().toISOString() })
       );
+      // 各回答を JSON 文字列化してから保存（API での解析に使用）
+      const serialized = Object.fromEntries(
+        Object.entries(ans).map(([k, v]) => [k, JSON.stringify(v)])
+      );
+      localStorage.setItem("ax_diagnosis_answers", JSON.stringify(serialized));
       router.push("/diagnosis/result");
     } else {
       setCurrentIndex((i) => i + 1);
