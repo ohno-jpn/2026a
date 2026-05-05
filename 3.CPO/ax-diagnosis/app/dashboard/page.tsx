@@ -126,6 +126,7 @@ export default async function DashboardPage() {
                     <th className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 px-4 py-3">PS</th>
                     <th className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 px-4 py-3">総合</th>
                     <th className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 px-4 py-3">解説メール</th>
+                    <th className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 px-4 py-3">詳細</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -144,6 +145,14 @@ export default async function DashboardPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <EmailButton diagnosisId={d.id} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <a
+                          href={`/dashboard/diagnoses/${d.id}`}
+                          className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          詳細 →
+                        </a>
                       </td>
                     </tr>
                   ))}
